@@ -1,0 +1,2 @@
+TTK_INT_MIN = -2**31
+TTK_INT_MAX = 2**31 - 1
