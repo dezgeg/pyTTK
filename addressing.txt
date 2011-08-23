@@ -1,0 +1,29 @@
+Recognized forms:
+
+  OPER Rj,ADDR        direct memory addressing
+  OPER Rj,Ri          direct register addressing
+  OPER Rj,=ADDR       immediate operand
+  OPER Rj,@ADDR       indirect memory addressing
+  OPER Rj,@Ri         indirect memory addressing
+  OPER Rj,ADDR(Ri)    indexed addressing
+  OPER Rj,=ADDR(Ri)   indexed immediate operand
+  OPER Rj,@ADDR(Ri)   indexed indirect memory addressing      
+
+actually only three forms for the second operand:
+
+=Addr(Rn) - mode 0
+ Addr(Rn) - mode 1
+@Addr(Rn) - mode 2
+
+i.e. the last three. The rest are just syntax sugar. So:
+
+ADDR  => Addr(R0)
+Ri    => =0(Ri)		(*)
+=Addr => =Addr(R0)
+@Addr => @Addr(R0)
+@Ri   => 0(Ri)
+
+(*) However, for the POP instruction, the Ri form is the only one allowed.
+Therefore the parser should somehow keep track of the difference between Rn and
+=0(Rn). Also, it would be useful to track explicit usage of the register R0 as
+an index register. 
