@@ -60,10 +60,12 @@ class BinaryLoader:
 					if not (pyttk.TTK_INT_MIN <= value <= pyttk.TTK_INT_MAX):
 						self.raise_error('symbol table value out of range')
 					self.program.symbol_table[match.group(1)] = value
-		if not self.program.code_seg:
+		if self.program.code_seg is None:
 			self.raise_error('file did not contain code segment')
-		if not self.program.data_seg:
+		if self.program.data_seg is None:
 			self.raise_error('file did not contain data segment')
+		if self.program.data_seg.start < self.program.code_seg.end:
+			self.raise_error('data segment must be located after code segment')
 		# TODO: check for overlapping code & data segments
 		return self.program
 

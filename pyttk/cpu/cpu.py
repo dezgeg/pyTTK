@@ -1,17 +1,28 @@
 import array
 from cpu.insn import Registers
 class Cpu:
-	def __init__(mem_size, data_seg_size, code_seg):
+	def __init__(mem_size, program):
 
-		# Copy the code segment to the start of memory & fill the rest with zeroes
-		self.memory = array.array('L', 
-			(code_seg[i] if i < len(code_seg) else 0 for i in xrange(mem_size)))
+		# Create the initial memory
+		def initmem_generator():
+			cs = program.code_seg
+			ds = program.data_seg
+			for i in xrange(mem_size):
+				if cs.start <= i <= cs.end:
+					yield cs.data[i - cs.start]
+				elif ds.start <= i <= ds.end:
+					yield ds.data[i - ds.start]
+				else:
+					yield 0
+
+		self.memory = array.array('L', initmem_generator())
 
 		# By default, FP points to the last byte in the code segment (wtf?),
 		# and SP to end of data segment
 		self.registers = [0 for _ in xrange(Registers.NUM_REGS)]
-		self.registers[Registers.FP] = len(code_seg) - 1
-		self.registers[Registers.SP] = len(code_seg) + data_seg_size - 1
+		self.registers[Registers.FP] = program.get_init_fp()
+		self.registers[Registers.SP] = program.get_init_sp()
+		self.registers[Registers.PC] = program.get_init_pc()
 
 		self.breakpoints = {}
 
@@ -46,7 +57,7 @@ class Cpu:
 			mem_fetches = insn.address_mode
 
 		ea = -1
-		ev = insn.imm_value
+		ev = self.get_index_reg(insn.ri) + insn.imm_value
 		for _ in range(mem_fetches):
 			ea = ev
 			ev = self.read_mem(ev, 'operand fetch')
