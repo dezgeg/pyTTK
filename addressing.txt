@@ -17,11 +17,11 @@ actually only three forms for the second operand:
 
 i.e. the last three. The rest are just syntax sugar. So:
 
-ADDR  => Addr(R0)
-Ri    => =0(Ri)		(*)
-=Addr => =Addr(R0)
-@Addr => @Addr(R0)
-@Ri   => 0(Ri)
+ADDR  => Addr(R0)	1
+Ri    => =0(Ri)		0 (*)
+=Addr => =Addr(R0)	0
+@Addr => @Addr(R0)	2
+@Ri   => 0(Ri)		1
 
 (*) However, for the POP instruction, the Ri form is the only one allowed.
 Therefore the parser should somehow keep track of the difference between Rn and
