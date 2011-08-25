@@ -1,6 +1,7 @@
 from pyparsing import *
 
 from pyttk.cpu.insn import Opcodes
+from pyttk.loader.program import Program
 
 ### auxilary instruction parts ###
 def keyword(k, v=None):
@@ -32,24 +33,13 @@ operands = register('rj') + Optional(Suppress(',') + second_operand)
 instruction = opcode('opcode') + Optional(operands)
 data_decl = data_op('opcode') + number('imm_value')
 
-asm_line = Optional(symbol('label')) + (instruction | data_decl)
+asm_line = Optional(symbol, default='').setParseAction(lambda s,l,t:
+	t[0])('label') + (instruction | data_decl)
 line = (asm_line + OneOrMore(LineEnd().suppress())).setParseAction(
 		lambda s,l,t: [t])
 
 asm_file = (ZeroOrMore(LineEnd()).suppress() + ZeroOrMore(line)).ignore(';' + restOfLine)
 ### glue code ###
-testStr = """
-; notice an empty line before this!
-load r1, somevar
-pop sp, r1 ; this is a special form!
-
-load r1, =42
-load r2, @someptr
-load r1, @5
-add r4, somearray(fp)
-mul fp, @someptrarray(r0)
-nop
-pushr sp"""
 class Assembler:
 	def __init__(self, filename, contents):
 		self.program = Program()
@@ -107,13 +97,4 @@ class Assembler:
 		ri = ri or Registers.R0
 		imm_value = imm_value or 0
 		# Instruction-specific checks
-for result in asm_file.parseString(testStr, True):
-
-	print result
-	print 'Label:',  repr(result.label)
-	print 'Opcode:', repr(result.opcode)
-	print 'Rj:', repr(result.rj)
-	print 'Address mode:', repr(result.address_mode)
-	print 'Constant:', repr(result.imm_value)
-	print 'Ri:', repr(result.ri)
-	print
+		raise 'TODO'
