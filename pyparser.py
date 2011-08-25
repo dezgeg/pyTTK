@@ -1,34 +1,55 @@
 from pyparsing import *
 
+from pyttk.cpu.insn import Opcodes
+
 ### auxilary instruction parts ###
 def keyword(k, v=None):
 	parser = CaselessKeyword(k)
-	return parser if not v else parser.setParseAction(replaceWith(v))
+	return parser if v is None else parser.setParseAction(replaceWith(v))
 
-number = Combine(Optional('-') + Word('0123456789'))
+def opcode_generator():
+	for opcode,opdata in Opcodes.opcode_table.iteritems():
+		yield keyword(opdata[1], opcode)
 
-register = Or([keyword('r' + str(x)) for x in range(0,7)] + 
-	[keyword('sp', 'r6'), keyword('fp','r7')])
-opcode = Or([keyword('add').setName('foo')] + [keyword(x) for x in ('sub', 'pop')])
+ParserElement.setDefaultWhitespaceChars(" \t")
+
+number = Combine(Optional('-') + Word('0123456789')).setParseAction(
+		lambda s,l,t: int(t[0]))
+
+register = Or([keyword('r' + str(x), x) for x in range(0,7+1)] + 
+	[keyword('sp', 6), keyword('fp',7)])
+opcode = Or(opcode_generator())
 data_op = Or([keyword(x) for x in ('ds', 'dc', 'equ')])
 
-symbol = ~(register | opcode | data_op) + Regex('[a-zA-Z_][a-zA-Z0-9_]*')
+symbol = ~(register | opcode | data_op) + Word(alphas + '_', alphanums + '_')
 address = symbol | number
-addrmode_specifier = Group(Optional(Literal('=') | Literal('@')))
+addrmode_specifier = Optional(Literal('=') | Literal('@'), default=' ')
 ### actual rules ###
 second_operand =  addrmode_specifier('address_mode') + (register('ri') |
-		(address('imm_value') + Optional('(' + register('ri') + ')')))
-operands = register('rj') + Optional(',' + second_operand)
+		(address('imm_value') + Optional(
+			Suppress('(') + register('ri') + Suppress(')'))))
+operands = register('rj') + Optional(Suppress(',') + second_operand)
 instruction = opcode('opcode') + Optional(operands)
-data_decl = data_op('opcode') + address('imm_value')
+data_decl = data_op('opcode') + number('imm_value')
 
 asm_line = Optional(symbol('label')) + (instruction | data_decl)
-line = (asm_line + (LineEnd() | StringEnd())).ignore(';' + restOfLine).setParseAction(
+line = (asm_line + OneOrMore(LineEnd().suppress())).setParseAction(
 		lambda s,l,t: [t])
 
-
-asm_file = ZeroOrMore(line)
+asm_file = (ZeroOrMore(LineEnd()).suppress() + ZeroOrMore(line)).ignore(';' + restOfLine)
 ### glue code ###
+testStr = """
+; notice an empty line before this!
+load r1, somevar
+pop sp, r1 ; this is a special form!
+
+load r1, =42
+load r2, @someptr
+load r1, @5
+add r4, somearray(fp)
+mul fp, @someptrarray(r0)
+nop
+pushr sp"""
 class Assembler:
 	def __init__(self, filename, contents):
 		self.program = Program()
@@ -67,13 +88,32 @@ class Assembler:
 		if i.opcode != Opcodes.NOP and not i.rj:
 			self.error(i, 'missing first operand')
 			return
-testStr = "add r1,r1 ;asdasd \n ; line comment \n foo ds 2 \n sub r1, foo "
+		op_flags = Opcodes.opcode_table[i.opcode]
+
+		if (not i.addr_mode and not op_flags.flags &
+				OpcodeFlags.SND_OPERAND_UNNECESSARY):
+			self.error(i, 'instruction requires a second operand')
+
+		(addr_mode, imm_value, ri) = (i.addr_mode, i.imm_value, i.ri)
+		# check for the case OP Rj, Ri or OP Rj, @Ri
+		# should be converted to =0(Ri) and 0(Ri)
+		if imm_value is None:
+			if addr_mode == '':
+				addr_mode = '='
+			elif addr_mode == '@':
+				addr_mode = ''
+			else:
+				pass # TODO: is =Ri form allowed???
+		ri = ri or Registers.R0
+		imm_value = imm_value or 0
+		# Instruction-specific checks
 for result in asm_file.parseString(testStr, True):
 
-	print 'Label:',  result.label
-	print 'Opcode:', result.opcode
-	print 'Rj:', result.rj
-	print 'Address mode', result.address_mode
-	print 'Constant:', result.imm_value
-	print 'Ri:', result.ri
+	print result
+	print 'Label:',  repr(result.label)
+	print 'Opcode:', repr(result.opcode)
+	print 'Rj:', repr(result.rj)
+	print 'Address mode:', repr(result.address_mode)
+	print 'Constant:', repr(result.imm_value)
+	print 'Ri:', repr(result.ri)
 	print
