@@ -1,4 +1,5 @@
 import struct
+from collections import namedtuple
 
 class OpcodeClass:
 	ALU_CHECK_OVERFLOW = 0
@@ -7,6 +8,10 @@ class OpcodeClass:
 	BRANCH_ON_FLAGS = 3
 	SIMULATOR = 4
 	OTHER = 5
+
+OpcodeFlags = namedtuple('OpcodeFlags', ('op_class', 'mnemoic', 'flags'))
+OpcodeFlags.SND_OPERAND_UNNECESSARY = 1
+OpcodeFlags.IMMEDIATE_MODE_NOT_ALLOWED = 2
 
 class Opcodes:
 	opcode_table = {}
@@ -30,6 +35,7 @@ _optable = [
 		'SHRA': 28,
 	},
 	# Class 2: Jump instructions where the condition is based on the Rj register
+	# Requirement: address mode must not be IMMEDIATE
 	{
 		'JUMP': 32,
 		'JNEG': 33,
@@ -40,6 +46,7 @@ _optable = [
 		'JNPOS': 38,
 	},
 	# Class 3: Jump instructions where the condition is based on the flags
+	# Requirement: address mode must not be IMMEDIATE
 	{
 		'JLES': 39,
 		'JEQU': 40,
@@ -56,26 +63,37 @@ _optable = [
 	},
 	# Class 5: Other instructions
 	{
-		'NOP': 0,
-		'STORE': 1,
+		'NOP': 0, # No operands necessary
+		'STORE': 1, # Address mode must not be IMMEDIATE
 		'NOT': 27,
 		'COMP': 31,
-		'CALL': 49,
+		'CALL': 49, # Address mode must not be IMMEDIATE
 		'EXIT': 50,
 		'PUSH': 51,
-		'POP': 52,
+		'POP': 52, # 2nd operand MUST be a register
+	# Second operand is optional
 		'PUSHR': 53,
 		'POPR': 54,
 	}
 ]
+# set up Opcodes.OPCODENAME = opcodenum
 for i in xrange(len(_optable)):
 	opgroup = _optable[i]
 	for (mnemoic, opcode) in opgroup.iteritems():
 		Opcodes.__dict__[mnemoic] = opcode
-		Opcodes.opcode_table[opcode] = (i, mnemoic)
+# set up Opcodes.opcode_table
+for i in xrange(len(_optable)):
+	opgroup = _optable[i]
+	for (mnemoic, opcode) in opgroup.iteritems():
+		flags = 0
+		if (i in (OpcodeClass.BRANCH_ON_RJ, OpcodeClass.BRANCH_ON_FLAGS) or
+				opcode in (Opcodes.STORE, Opcodes.CALL)):
+			flags |= OpcodeFlags.IMMEDIATE_MODE_NOT_ALLOWED
+		if opcode in (Opcodes.PUSHR, Opcodes.POPR):
+			flags |= OpcodeFlags.SND_OPERAND_UNNECESSARY
+		Opcodes.opcode_table[opcode] = OpcodeFlags(i, mnemoic, flags)
+
 _optable = None
-
-
 class AddressModes:
 	IMMEDIATE = 0
 	DIRECT = 1

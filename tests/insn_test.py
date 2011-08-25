@@ -7,8 +7,16 @@ def test_Opcodes():
 	eq_(Opcodes.SVC, 112)
 	eq_(Opcodes.COMP, 31)
 
-	eq_(Opcodes.opcode_table[112], (OpcodeClass.SIMULATOR, 'SVC'))
-	eq_(Opcodes.opcode_table[19], (OpcodeClass.ALU_CHECK_OVERFLOW, 'MUL'))
+	svc = Opcodes.opcode_table[112]
+	mul = Opcodes.opcode_table[19]
+
+	eq_(svc.op_class, OpcodeClass.SIMULATOR)
+	eq_(svc.mnemoic, 'SVC')
+	eq_(svc.flags, 0)
+
+	eq_(mul.op_class, OpcodeClass.ALU_CHECK_OVERFLOW)
+	eq_(mul.mnemoic, 'MUL')
+	eq_(mul.flags, 0)
 
 def test_Insn():
 	insn = Insn(1891631115) # svc sp, =halt
