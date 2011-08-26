@@ -1,6 +1,8 @@
 import struct
 from collections import namedtuple
 
+from recordtype import recordtype
+
 class OpcodeClass:
 	ALU_CHECK_OVERFLOW = 0
 	ALU = 1
@@ -11,7 +13,7 @@ class OpcodeClass:
 
 OpcodeFlags = namedtuple('OpcodeFlags', ('op_class', 'mnemoic', 'flags'))
 OpcodeFlags.SND_OPERAND_UNNECESSARY = 1
-OpcodeFlags.IMMEDIATE_MODE_NOT_ALLOWED = 2
+OpcodeFlags.SND_OPERAND_MUST_BE_MEMORY = 2
 
 class Opcodes:
 	opcode_table = {}
@@ -88,7 +90,7 @@ for i in xrange(len(_optable)):
 		flags = 0
 		if (i in (OpcodeClass.BRANCH_ON_RJ, OpcodeClass.BRANCH_ON_FLAGS) or
 				opcode in (Opcodes.STORE, Opcodes.CALL)):
-			flags |= OpcodeFlags.IMMEDIATE_MODE_NOT_ALLOWED
+			flags |= OpcodeFlags.SND_OPERAND_MUST_BE_MEMORY
 		if opcode in (Opcodes.PUSHR, Opcodes.POPR):
 			flags |= OpcodeFlags.SND_OPERAND_UNNECESSARY
 		Opcodes.opcode_table[opcode] = OpcodeFlags(i, mnemoic, flags)
@@ -130,14 +132,11 @@ class Devices:
 	KBD = 0
 	CRT = 1
 
-class Insn(namedtuple('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value'))):
-	""" Insn is just a simple immutable container for accessing the operand
-	fields in a ttk-91 instruction """
+class Insn(recordtype('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value'))):
+	""" Insn is just a simple container for accessing the operand fields in a
+	ttk-91 instruction """
 
-	def __repr__(self): return repr((self.opcode, self.rj, self.address_mode,
-		self.ri, self.imm_value))
-
-	def __new__(cls, *args):
+	def __init__(self, *args):
 		if len(args) == 1:
 			word = args[0]
 			(opcode, regdata, imm_value) = struct.unpack('>BBh',
@@ -145,7 +144,7 @@ class Insn(namedtuple('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value
 			rj = regdata >> 5
 			address_mode = (0b11000 & regdata) >> 3
 			ri = regdata & 0b111
-			return super(Insn, cls).__new__(cls, opcode, rj, address_mode, ri, imm_value)
+			super(Insn, self).__init__(opcode, rj, address_mode, ri, imm_value)
 		else:
-			return super(Insn, cls).__new__(cls, *args)
+			super(Insn, self).__init__(*args)
 	

@@ -30,3 +30,13 @@ For these two, the logic actually changes.
 Therefore the parser should somehow keep track of the difference between Rn and
 =0(Rn). Also, it would be useful to track explicit usage of the register R0 as
 an index register. 
+
+Also, for some instructions, the second operand must be a memory reference,
+and the syntax is a bit different. The allowed forms and respective address mode
+numbers are:
+
+	OPER Rj,  ADDR     => 0
+	OPER Rj, @ADDR     => 1
+	OPER Rj, @Ri       => 0 (*)
+	OPER Rj,  ADDR(Ri) => 0
+	OPER Rj, @ADDR(Ri) => 1

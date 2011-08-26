@@ -78,42 +78,59 @@ class Assembler:
 			else:
 				self.handle_instruction(i)
 
-	def handle_instruction(self, i):
-		if i.label:
-			self.assign_code_seg_symbol(i.label)
-		(address_mode, imm_value, ri) = (i.address_mode, i.imm_value, i.ri)
+	def insn_from_parseresult(self, parseresult):
+		insn = Insn(parseresult.opcode, 0, 0, 0, 0)
 
 		# Perform validation on operands
-		if not i.rj:
-			if i.opcode != Opcodes.NOP:
-				self.error(i, 'missing first operand')
-				return
-			else: # Fill unused fields with zeroes
-				rj = 0
-				address_mode = '='
-		op_flags = Opcodes.opcode_table[i.opcode]
+		op_flags = Opcodes.opcode_table[parseresult.opcode].flags
+		if not parseresult.rj:
+			if insn.opcode != Opcodes.NOP:
+				self.error('instruction requires a first operand')
+			return insn
 
-		if not address_mode:
-			if not op_flags.flags & OpcodeFlags.SND_OPERAND_UNNECESSARY:
-				self.error(i, 'instruction requires a second operand')
-				return
+		insn.rj = parseresult.rj
+		if not parseresult.address_mode:
+			if not op_flags & OpcodeFlags.SND_OPERAND_UNNECESSARY:
+				self.error('instruction requires a second operand')
+			return insn
+
+		insn.ri = parseresult.ri or Registers.R0
+		insn.imm_value = parseresult.imm_value or 0
+
+		is_reg_only = parseresult.address_mode == ' ' and parseresult.imm_value == ''
+		if parseresult.opcode == Opcodes.POP and not is_reg_only:
+			self.error('second operand to POP must be a register')
+			return insn
+
+		# Some instruction require a memory operand as the second operand,
+		# their syntax is a bit different
+		# See addressing.txt for more info
+		if op_flags & OpcodeFlags.SND_OPERAND_MUST_BE_MEMORY:
+			if parseresult.address_mode == '=' or is_reg_only:
+				self.error('instruction requires a memory operand')
+				return insn
+			if parseresult.address_mode == '@' and parseresult.imm_value == '':
+				insn.address_mode = 0
 			else:
-				address_mode = '='
-
-		# check for the case OP Rj, Ri or OP Rj, @Ri
-		# should be converted to =0(Ri) and 0(Ri)
-		if imm_value == '':
-			if address_mode == ' ':
-				address_mode = '='
-			elif address_mode == '@':
-				address_mode = ' '
+				insn.address_mode = {' ': 0, '@': 1}[parseresult.address_mode]
+		else:
+			# check for the case OP Rj, Ri or OP Rj, @Ri
+			# should be converted to =0(Ri) and 0(Ri)
+			if parseresult.imm_value == '':
+				if parseresult.address_mode == '=':
+					self.error('OPER Rj, =Ri form not allowed')
+					return insn
+				insn.address_mode = {' ': AddressModes.IMMEDIATE, '@':
+						AddressModes.DIRECT}[parseresult.address_mode]
 			else:
-				pass # TODO: is =Ri form allowed???
-		ri = ri or Registers.R0
-		imm_value = imm_value or 0
-		address_mode = {'=': AddressModes.IMMEDIATE,
-				' ': AddressModes.DIRECT,
-				'@': AddressModes.INDIRECT}[address_mode]
+				insn.address_mode = {'=': AddressModes.IMMEDIATE,
+						' ': AddressModes.DIRECT,
+						'@': AddressModes.INDIRECT}[parseresult.address_mode]
+		return insn
 
-		self.append_code_seg(Insn(i.opcode, i.rj or 0, address_mode, ri,
-			imm_value))
+	def handle_instruction(self, parseresult):
+		if parseresult.label:
+			self.assign_code_seg_symbol(parseresult.label)
+
+		insn = self.insn_from_parseresult(parseresult)
+		self.append_code_seg(insn)
