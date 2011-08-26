@@ -5,8 +5,8 @@ tests:
 	nosetests
 
 coverage: clean
-	nosetests --with-coverage
-	coverage html --include='tests*,pyttk*' -d htmlcov
+	nosetests --with-cov
+	coverage html
 
 clean:
 	coverage erase
