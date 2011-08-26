@@ -1,7 +1,7 @@
 from nose.tools import(eq_, ok_)
 import unittest
 
-from pyttk.cpu.insn import Opcodes
+from pyttk.cpu.insn import *
 from pyttk.assembler import Assembler
 
 def test_Assembler_parsing():
@@ -40,4 +40,35 @@ def test_Assembler_parsing():
 		# print (insn.label, insn.opcode, insn.rj, insn.address_mode, insn.imm_value, insn.ri)
 		eq_((insn.label, insn.opcode, insn.rj, insn.address_mode, insn.imm_value, insn.ri),
 				results[i])
+
+def test_Assembler_basic_instructions():
+	test_string = """
+		add r1, 1(r2) ; a basic instruction
+		nop ; instruction with no operands
+		popr sp ; instruction with only one operand
+	"""
+	asm = Assembler('test file', test_string)
+	asm.assemble()
+	eq_(len(asm.code_seg), 3)
+
+	eq_(asm.code_seg[0], Insn(Opcodes.ADD, 1, AddressModes.DIRECT, 2, 1))
+	eq_(asm.code_seg[1].opcode, Opcodes.NOP)
+
+	eq_(asm.code_seg[2].opcode, Opcodes.POPR)
+	eq_(asm.code_seg[2].rj, Registers.SP)
+
+def test_Assembler_exceptional_address_modes():
+	test_string = """
+		; check that address mode is correct for these two
+		pop sp, r0
+		mul r1, @r2
+	"""
+	asm = Assembler('addr mode test file', test_string)
+	asm.assemble()
+	eq_(len(asm.code_seg), 2)
+
+	eq_(asm.code_seg[0], Insn(Opcodes.POP, Registers.SP,
+		AddressModes.IMMEDIATE, Registers.R0, 0))
+	eq_(asm.code_seg[1], Insn(Opcodes.MUL, 1,
+		AddressModes.DIRECT, Registers.R2, 0))
 

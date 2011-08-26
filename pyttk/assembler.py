@@ -1,6 +1,6 @@
 from pyparsing import *
 
-from pyttk.cpu.insn import Opcodes
+from pyttk.cpu.insn import *
 from pyttk.loader.program import Program
 
 ### auxilary instruction parts ###
@@ -44,6 +44,7 @@ class Assembler:
 	def __init__(self, filename, contents):
 		self.program = Program()
 		self.insns = asm_file.parseString(contents)
+		self.code_seg = []
 		self.data_seg = []
 		self.data_seg_syms = {}
 
@@ -53,7 +54,10 @@ class Assembler:
 	def assign_symbol(self, sym, value):
 		self.program.symbol_table[sym] = value
 
-	def run(self):
+	def append_code_seg(self, insn):
+		self.code_seg.append(insn)
+
+	def assemble(self):
 		insns = self.insns
 
 		for i in insns:
@@ -64,7 +68,7 @@ class Assembler:
 					self.assign_symbol(i.label, i.imm_value)
 			elif i.opcode == 'dc':
 				self.assign_data_seg_symbol(i.label)
-				self.data_seg.append(i.imm_value)
+				self.append_data_seg(i.imm_value)
 			elif i.opcode == 'ds':
 				if i.imm_value < 0:
 					self.error(i, "operand to 'ds' must be positive")
@@ -75,26 +79,41 @@ class Assembler:
 				self.handle_instruction(i)
 
 	def handle_instruction(self, i):
-		if i.opcode != Opcodes.NOP and not i.rj:
-			self.error(i, 'missing first operand')
-			return
+		if i.label:
+			self.assign_code_seg_symbol(i.label)
+		(address_mode, imm_value, ri) = (i.address_mode, i.imm_value, i.ri)
+
+		# Perform validation on operands
+		if not i.rj:
+			if i.opcode != Opcodes.NOP:
+				self.error(i, 'missing first operand')
+				return
+			else: # Fill unused fields with zeroes
+				rj = 0
+				address_mode = '='
 		op_flags = Opcodes.opcode_table[i.opcode]
 
-		if (not i.addr_mode and not op_flags.flags &
-				OpcodeFlags.SND_OPERAND_UNNECESSARY):
-			self.error(i, 'instruction requires a second operand')
+		if not address_mode:
+			if not op_flags.flags & OpcodeFlags.SND_OPERAND_UNNECESSARY:
+				self.error(i, 'instruction requires a second operand')
+				return
+			else:
+				address_mode = '='
 
-		(addr_mode, imm_value, ri) = (i.addr_mode, i.imm_value, i.ri)
 		# check for the case OP Rj, Ri or OP Rj, @Ri
 		# should be converted to =0(Ri) and 0(Ri)
-		if imm_value is None:
-			if addr_mode == '':
-				addr_mode = '='
-			elif addr_mode == '@':
-				addr_mode = ''
+		if imm_value == '':
+			if address_mode == ' ':
+				address_mode = '='
+			elif address_mode == '@':
+				address_mode = ' '
 			else:
 				pass # TODO: is =Ri form allowed???
 		ri = ri or Registers.R0
 		imm_value = imm_value or 0
-		# Instruction-specific checks
-		raise 'TODO'
+		address_mode = {'=': AddressModes.IMMEDIATE,
+				' ': AddressModes.DIRECT,
+				'@': AddressModes.INDIRECT}[address_mode]
+
+		self.append_code_seg(Insn(i.opcode, i.rj or 0, address_mode, ri,
+			imm_value))
