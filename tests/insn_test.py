@@ -18,7 +18,7 @@ def test_Opcodes():
 	eq_(mul.mnemoic, 'MUL')
 	eq_(mul.flags, 0)
 
-def test_Insn():
+def test_Insn_word_ctor():
 	insn = Insn(1891631115) # svc sp, =halt
 
 	eq_(insn.opcode, Opcodes.SVC)
@@ -27,3 +27,11 @@ def test_Insn():
 	eq_(insn.ri, Registers.R0)
 	eq_(insn.imm_value, Svcs.HALT)
 
+def test_Insn_parts_ctor():
+	insn = Insn(Opcodes.LOAD, 1, AddressModes.IMMEDIATE, 2, 42)
+
+	eq_(insn.opcode, Opcodes.LOAD)
+	eq_(insn.rj, Registers.R1)
+	eq_(insn.address_mode, AddressModes.IMMEDIATE)
+	eq_(insn.ri, Registers.R2)
+	eq_(insn.imm_value, 42)

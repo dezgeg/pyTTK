@@ -130,16 +130,22 @@ class Devices:
 	KBD = 0
 	CRT = 1
 
-class Insn:
+class Insn(namedtuple('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value'))):
 	""" Insn is just a simple immutable container for accessing the operand
 	fields in a ttk-91 instruction """
 
-	__slots__ = ('opcode', 'rj', 'address_mode', 'ri', 'imm_value')
+	def __repr__(self): return repr((self.opcode, self.rj, self.address_mode,
+		self.ri, self.imm_value))
 
-	def __init__(self, word):
-		(self.opcode, regdata, self.imm_value) = struct.unpack('>BBh', 
-			struct.pack('>L', word))
-		self.rj = regdata >> 5
-		self.address_mode = (0b11000 & regdata) >> 3
-		self.ri = regdata & 0b111
+	def __new__(cls, *args):
+		if len(args) == 1:
+			word = args[0]
+			(opcode, regdata, imm_value) = struct.unpack('>BBh',
+				struct.pack('>L', word))
+			rj = regdata >> 5
+			address_mode = (0b11000 & regdata) >> 3
+			ri = regdata & 0b111
+			return super(Insn, cls).__new__(cls, opcode, rj, address_mode, ri, imm_value)
+		else:
+			return super(Insn, cls).__new__(cls, *args)
 	
