@@ -147,4 +147,15 @@ class Insn(recordtype('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value
 			super(Insn, self).__init__(opcode, rj, address_mode, ri, imm_value)
 		else:
 			super(Insn, self).__init__(*args)
+
+	def to_binary(self):
+		return (self.opcode << 24 | self.rj << 21 | self.address_mode << 19 |
+			self.ri << 16 | self.imm_value)
+
+	IMMED_MIN = -32768
+	IMMED_MAX =  32767
+
+	@staticmethod
+	def is_valid_immed_value(value):
+		return Insn.IMMED_MIN <= value <= Insn.IMMED_MAX
 	

@@ -27,6 +27,8 @@ def test_Insn_word_ctor():
 	eq_(insn.ri, Registers.R0)
 	eq_(insn.imm_value, Svcs.HALT)
 
+	eq_(insn.to_binary(), 1891631115)
+
 def test_Insn_parts_ctor():
 	insn = Insn(Opcodes.LOAD, 1, AddressModes.IMMEDIATE, 2, 42)
 
@@ -35,3 +37,5 @@ def test_Insn_parts_ctor():
 	eq_(insn.address_mode, AddressModes.IMMEDIATE)
 	eq_(insn.ri, Registers.R2)
 	eq_(insn.imm_value, 42)
+
+	eq_(insn.to_binary(), 35782698)
