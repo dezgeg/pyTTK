@@ -1,7 +1,7 @@
 from pyparsing import *
 
 from pyttk.cpu.insn import *
-from pyttk.loader.program import Program
+from pyttk.loader.program import *
 
 ### auxilary instruction parts ###
 def keyword(k, v=None):
@@ -79,7 +79,7 @@ class Assembler:
 				self.handle_instruction(i)
 
 	def insn_from_parseresult(self, parseresult):
-		insn = Insn(parseresult.opcode, 0, 0, 0, 0)
+		insn = Insn(parseresult.opcode, 0, 1, 0, 0)
 
 		# Perform validation on operands
 		op_flags = Opcodes.opcode_table[parseresult.opcode].flags
@@ -110,6 +110,8 @@ class Assembler:
 				self.error('instruction requires a memory operand')
 				return insn
 			if parseresult.address_mode == '@' and parseresult.imm_value == '':
+				# Check for case OP Rj, @Ri
+				# XXX: Specified in the manual, but titokone pukes on this
 				insn.address_mode = 0
 			else:
 				insn.address_mode = {' ': 0, '@': 1}[parseresult.address_mode]
@@ -127,6 +129,32 @@ class Assembler:
 						' ': AddressModes.DIRECT,
 						'@': AddressModes.INDIRECT}[parseresult.address_mode]
 		return insn
+
+	def build_binary(self):
+		# Assign data segment symbols
+		for (sym, value) in self.data_seg_syms.iteritems():
+			self.assign_symbol(sym, value + cs_size)
+
+		def code_seg_generator():
+			for insn in self.code_seg:
+				value = insn.imm_value
+				if isinstance(value, basestring):
+					value = self.lookup_symbol(value)
+				if value is None:
+					self.error('undefined symbol', insn)
+					yield 0
+				elif not Insn.is_valid_immed_value(value):
+					self.error('immediate value out of range', insn)
+					yield 0
+				else:
+					yield insn.to_binary()
+
+		program = Program()
+		cs_size = len(self.code_seg)
+		program.code_seg = Segment(0, cs_size - 1, code_seg_generator())
+		program.data_seg = Segment(cs_size, cs_size + len(self.data_seg) - 1,
+				self.data_seg)
+		return program
 
 	def handle_instruction(self, parseresult):
 		if parseresult.label:

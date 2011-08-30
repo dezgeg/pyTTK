@@ -57,18 +57,40 @@ def test_Assembler_basic_instructions():
 	eq_(asm.code_seg[2].opcode, Opcodes.POPR)
 	eq_(asm.code_seg[2].rj, Registers.SP)
 
+	binary = asm.build_binary()
+	eq_(len(binary.code_seg), 3)
+
+	eq_(binary.code_seg[0], 287965185)
+	eq_(binary.code_seg[1], 524288)
+	eq_(binary.code_seg[2], 919076864)
+
+
 def test_Assembler_exceptional_address_modes():
 	test_string = """
 		; check that address mode is correct for these two
 		pop sp, r0
 		mul r1, @r2
+		store r2, 42
+		jump r5, @r4
 	"""
 	asm = Assembler('addr mode test file', test_string)
 	asm.assemble()
-	eq_(len(asm.code_seg), 2)
+	eq_(len(asm.code_seg), 4)
 
 	eq_(asm.code_seg[0], Insn(Opcodes.POP, Registers.SP,
 		AddressModes.IMMEDIATE, Registers.R0, 0))
 	eq_(asm.code_seg[1], Insn(Opcodes.MUL, 1,
 		AddressModes.DIRECT, Registers.R2, 0))
+	eq_(asm.code_seg[2], Insn(Opcodes.STORE, 2,
+		0, 0, 42))
+	eq_(asm.code_seg[3], Insn(Opcodes.JUMP, 5,
+		0, 4, 0))
+
+	binary = asm.build_binary()
+	eq_(len(binary.code_seg), 4)
+
+	eq_(binary.code_seg[0], 884998144)
+	eq_(binary.code_seg[1], 321519616)
+	eq_(binary.code_seg[2], 20971562)
+	eq_(binary.code_seg[3], 547618816)
 

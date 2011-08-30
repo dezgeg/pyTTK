@@ -1,13 +1,16 @@
 import array
 class Segment:
-	def __init__(self, start, end):
+	def __init__(self, start, end, contents=None):
 		self.start = start
 		self.end = end
 		self.data = array.array('l',
-			(0 for _ in xrange(start, end + 1)))
+			contents if contents else (0 for _ in xrange(start, end + 1)))
 
 	def __len__(self):
 		return self.end - self.start + 1
+
+	def __getitem__(self, i):
+		return self.data[i - self.start]
 
 class Program:
 	def __init__(self):
