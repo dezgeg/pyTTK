@@ -94,3 +94,40 @@ def test_Assembler_exceptional_address_modes():
 	eq_(binary.code_seg[2], 20971562)
 	eq_(binary.code_seg[3], 547618816)
 
+def test_Assembler_labels():
+	test_string = """
+		foo equ 42
+		load r1, =foo
+		testlabel load r1, =42
+		load r2, =testlabel
+		load r2, =1
+	"""
+	asm = Assembler('label test', test_string)
+	asm.assemble()
+
+	binary = asm.build_binary()
+	eq_(len(binary.code_seg), 4)
+
+	eq_(binary.code_seg[0], binary.code_seg[1])
+	eq_(binary.code_seg[2], binary.code_seg[3])
+
+	eq_(binary.symbol_table, {'foo': 42, 'testlabel': 1})
+
+def test_Assembler_data_seg():
+	test_string = """
+		dc 42
+		add r1, r1
+		somearray ds 4
+		add r2, r2
+		somevar dc 4
+		add r3, r3
+	"""
+	asm = Assembler('data seg test', test_string)
+	asm.assemble()
+
+	binary = asm.build_binary()
+
+	eq_(len(binary.code_seg), 3)
+	eq_(binary.data_seg.to_list(), [42, 0, 0, 0, 0, 4])
+
+	eq_(binary.symbol_table, {'somearray': 4, 'somevar': 8})

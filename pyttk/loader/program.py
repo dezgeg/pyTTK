@@ -6,6 +6,9 @@ class Segment:
 		self.data = array.array('l',
 			contents if contents else (0 for _ in xrange(start, end + 1)))
 
+	def to_list(self):
+		return self.data.tolist()
+
 	def __len__(self):
 		return self.end - self.start + 1
 

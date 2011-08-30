@@ -49,13 +49,22 @@ class Assembler:
 		self.data_seg_syms = {}
 
 	def assign_data_seg_symbol(self, sym):
-		self.data_seg_syms[sym] = len(data_seg)
+		self.data_seg_syms[sym] = len(self.data_seg)
+
+	def assign_code_seg_symbol(self, sym):
+		self.assign_symbol(sym, len(self.code_seg))
 
 	def assign_symbol(self, sym, value):
 		self.program.symbol_table[sym] = value
 
+	def lookup_symbol(self, sym):
+		return self.program.symbol_table[sym]
+
 	def append_code_seg(self, insn):
 		self.code_seg.append(insn)
+
+	def append_data_seg(self, insn):
+		self.data_seg.append(insn)
 
 	def assemble(self):
 		insns = self.insns
@@ -67,7 +76,8 @@ class Assembler:
 				else:
 					self.assign_symbol(i.label, i.imm_value)
 			elif i.opcode == 'dc':
-				self.assign_data_seg_symbol(i.label)
+				if i.label:
+					self.assign_data_seg_symbol(i.label)
 				self.append_data_seg(i.imm_value)
 			elif i.opcode == 'ds':
 				if i.imm_value < 0:
@@ -131,6 +141,7 @@ class Assembler:
 		return insn
 
 	def build_binary(self):
+		cs_size = len(self.code_seg)
 		# Assign data segment symbols
 		for (sym, value) in self.data_seg_syms.iteritems():
 			self.assign_symbol(sym, value + cs_size)
@@ -147,10 +158,10 @@ class Assembler:
 					self.error('immediate value out of range', insn)
 					yield 0
 				else:
+					insn.imm_value = value
 					yield insn.to_binary()
 
-		program = Program()
-		cs_size = len(self.code_seg)
+		program = self.program
 		program.code_seg = Segment(0, cs_size - 1, code_seg_generator())
 		program.data_seg = Segment(cs_size, cs_size + len(self.data_seg) - 1,
 				self.data_seg)
