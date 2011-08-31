@@ -80,5 +80,30 @@ class BinaryLoader:
 			value = int(self.get_line())
 			if not pyttk.TTK_INT_MIN <= value <= pyttk.TTK_INT_MAX:
 				self.raise_error('segment data value out of range')
-			segment.data[i] = value
+			segment[i] = value
 		return segment	
+
+	@classmethod
+	def dump_binary(cls, program, stream):
+		stream.write("___b91___\n")
+
+		cls.dump_segment(program.code_seg, '___code___', stream)
+		cls.dump_segment(program.data_seg, '___data___', stream)
+		cls.dump_symbol_table(program.symbol_table, stream)
+
+		stream.write("___end___")
+
+	@staticmethod
+	def dump_segment(seg, headerline, stream):
+		stream.write(headerline + "\n")
+		stream.write("%d %d\n" % (seg.start, seg.end))
+		for val in seg:
+			stream.write("%d\n" % val)
+
+	@staticmethod
+	def dump_symbol_table(symtab, stream):
+		stream.write("___symboltable___\n")
+
+		for name,val in sorted(symtab.iteritems()):
+			stream.write('%s %d\n' % (name, val))
+

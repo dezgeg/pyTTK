@@ -15,6 +15,9 @@ class Segment:
 	def __getitem__(self, i):
 		return self.data[i - self.start]
 
+	def __setitem__(self, i, value):
+		self.data[i - self.start] = value
+
 	def __iter__(self):
 		return self.data.__iter__()
 

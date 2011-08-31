@@ -3,7 +3,7 @@ from nose.tools import eq_, ok_
 
 from StringIO import StringIO
 
-from pyttk.loader.binary_loader import load_binary_file
+from pyttk.loader.binary_loader import load_binary_file, BinaryLoader
 
 class BinaryLoaderSuccesfulLoadTests(unittest.TestCase):
 	def setUp(self):
@@ -52,6 +52,15 @@ ___end___"""))
 	def test_init_sp_fp_correct(self):
 		eq_(self.program.get_init_sp(), 3)
 		eq_(self.program.get_init_fp(), 1)
+		eq_(self.program.get_init_pc(), 0)
+
+	def test_dump_binary(self):
+		stream = StringIO()
+		BinaryLoader.dump_binary(self.program, stream)
+		stream.seek(0)
+
+		newbinary = load_binary_file('the same file dumped', stream)
+		eq_(newbinary, self.program)
 
 class BinaryLoaderEmptyDataSegmentTests(unittest.TestCase):
 	def setUp(self):
@@ -71,6 +80,15 @@ ___end___"""))
 	def test_data_seg_correct(self):
 		eq_(len(self.program.data_seg), 0)
 
-	def test_init_sp_fp_correct(self):
+	def test_init_regs_correct(self):
 		eq_(self.program.get_init_fp(), 1)
 		eq_(self.program.get_init_sp(), 1)
+		eq_(self.program.get_init_pc(), 0)
+
+	def test_dump_binary(self):
+		stream = StringIO()
+		BinaryLoader.dump_binary(self.program, stream)
+		stream.seek(0)
+
+		newbinary = load_binary_file('the same file dumped', stream)
+		eq_(newbinary, self.program)
