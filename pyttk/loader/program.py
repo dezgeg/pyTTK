@@ -15,10 +15,23 @@ class Segment:
 	def __getitem__(self, i):
 		return self.data[i - self.start]
 
+	def __iter__(self):
+		return self.data.__iter__()
+
+	def __eq__(self, other):
+		return (self.start == other.start and
+				self.end == other.end and
+				self.data == other.data)
+
 class Program:
 	def __init__(self):
 		self.code_seg = self.data_seg = None
 		self.symbol_table = {}
+
+	def __eq__(self, other):
+		return (self.code_seg == other.code_seg and
+			self.data_seg == other.data_seg and
+			self.symbol_table == other.symbol_table)
 
 	def get_init_sp(self):
 		return self.data_seg.end
@@ -28,3 +41,4 @@ class Program:
 
 	def get_init_pc(self):
 		return self.code_seg.start
+
