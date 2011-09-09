@@ -1,4 +1,7 @@
 import array
+from collections import defaultdict
+
+from pyttk.cpu.insn import Svcs, Devices
 class Segment:
 	def __init__(self, start, end, contents=None):
 		self.start = start
@@ -29,7 +32,7 @@ class Segment:
 class Program:
 	def __init__(self):
 		self.code_seg = self.data_seg = None
-		self.symbol_table = {}
+		self.symbol_table = SymbolTable()
 
 	def __eq__(self, other):
 		return (self.code_seg == other.code_seg and
@@ -45,3 +48,21 @@ class Program:
 	def get_init_pc(self):
 		return self.code_seg.start
 
+class SymbolTable(dict):
+	DEFAULT_SYMBOLS = {}
+	DEFAULT_SYMBOLS.update(Svcs.SVC_NUMBERS)
+	DEFAULT_SYMBOLS.update(Devices.DEVICE_NUMBERS)
+
+	def __init__(self):
+		super(SymbolTable, self).__init__()
+
+	def __getitem__(self, key):
+		key = key.lower()
+		if key not in self:
+			val = self.DEFAULT_SYMBOLS[key]
+			self[key] = val
+			return val
+		return super(SymbolTable, self).__getitem__(key)
+
+	def __setitem__(self, key, value):
+		super(SymbolTable, self).__setitem__(key.lower(), value)

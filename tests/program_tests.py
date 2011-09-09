@@ -1,6 +1,7 @@
 from nose.tools import eq_, ok_
 import unittest
 
+from pyttk.cpu.insn import Svcs
 from pyttk.loader.program import *
 
 class SegmentTests(unittest.TestCase):
@@ -25,3 +26,20 @@ class SegmentTests(unittest.TestCase):
 
 	def test_iter(self):
 		eq_(list(self.test_seg), self.test_seg.to_list())
+
+class SymbolTableTests(unittest.TestCase):
+	def setUp(self):
+		self.symtab = SymbolTable()
+	def test_get(self):
+		self.symtab['foo'] = 'bar'
+		eq_(self.symtab['FoO'], 'bar')
+
+	def test_set(self):
+		self.symtab['bAR'] = 'foo'
+		ok_('bar' in self.symtab)
+		eq_(self.symtab['bar'], 'foo')
+
+	def test_default_symbols(self):
+		eq_(self.symtab['HALT'], Svcs.HALT)
+		self.symtab['Halt'] = 42
+		eq_(self.symtab['halt'], 42)

@@ -122,15 +122,25 @@ class Registers:
 	NUM_REGS = 10
 
 class Svcs:
-	HALT = 11
-	READ = 12
-	WRITE = 13
-	TIME = 14
-	DATE = 15
+	SVC_NUMBERS = {
+			'halt': 11,
+			'read': 12,
+			'write': 13,
+			'time': 14,
+			'date': 15
+			}
+
+for (k, v) in Svcs.SVC_NUMBERS.iteritems():
+	Svcs.__dict__[k.upper()] = v
 
 class Devices:
-	KBD = 0
-	CRT = 1
+	DEVICE_NUMBERS = {
+			'crt': 0,
+			'kbd': 1
+			}
+
+for (k, v) in Devices.DEVICE_NUMBERS.iteritems():
+	Devices.__dict__[k.upper()] = v
 
 class Insn(recordtype('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value'))):
 	""" Insn is just a simple container for accessing the operand fields in a
@@ -150,7 +160,7 @@ class Insn(recordtype('_Insn', ('opcode', 'rj', 'address_mode', 'ri', 'imm_value
 
 	def to_binary(self):
 		return (self.opcode << 24 | self.rj << 21 | self.address_mode << 19 |
-			self.ri << 16 | self.imm_value)
+			self.ri << 16 | self.imm_value & 0xffff)
 
 	IMMED_MIN = -32768
 	IMMED_MAX =  32767
