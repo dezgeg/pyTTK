@@ -91,7 +91,7 @@ class BinaryLoader:
 		cls.dump_segment(program.data_seg, '___data___', stream)
 		cls.dump_symbol_table(program.symbol_table, stream)
 
-		stream.write("___end___")
+		stream.write("___end___\n")
 
 	@staticmethod
 	def dump_segment(seg, headerline, stream):

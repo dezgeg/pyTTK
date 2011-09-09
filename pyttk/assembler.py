@@ -43,7 +43,7 @@ asm_file = (ZeroOrMore(LineEnd()).suppress() + ZeroOrMore(line)).ignore(';' + re
 class Assembler:
 	def __init__(self, filename, contents):
 		self.program = Program()
-		self.insns = asm_file.parseString(contents)
+		self.insns = asm_file.parseString(contents, True)
 		self.code_seg = []
 		self.data_seg = []
 		self.data_seg_syms = {}
@@ -93,7 +93,7 @@ class Assembler:
 
 		# Perform validation on operands
 		op_flags = Opcodes.opcode_table[parseresult.opcode].flags
-		if not parseresult.rj:
+		if parseresult.rj == '':
 			if insn.opcode != Opcodes.NOP:
 				self.error('instruction requires a first operand')
 			return insn
@@ -141,6 +141,7 @@ class Assembler:
 		return insn
 
 	def build_binary(self):
+		self.assemble()
 		cs_size = len(self.code_seg)
 		# Assign data segment symbols
 		for (sym, value) in self.data_seg_syms.iteritems():

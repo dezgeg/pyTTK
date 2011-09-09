@@ -48,7 +48,7 @@ def test_Assembler_basic_instructions():
 		popr sp ; instruction with only one operand
 	"""
 	asm = Assembler('test file', test_string)
-	asm.assemble()
+	binary = asm.build_binary()
 	eq_(len(asm.code_seg), 3)
 
 	eq_(asm.code_seg[0], Insn(Opcodes.ADD, 1, AddressModes.DIRECT, 2, 1))
@@ -57,7 +57,6 @@ def test_Assembler_basic_instructions():
 	eq_(asm.code_seg[2].opcode, Opcodes.POPR)
 	eq_(asm.code_seg[2].rj, Registers.SP)
 
-	binary = asm.build_binary()
 	eq_(len(binary.code_seg), 3)
 
 	eq_(binary.code_seg[0], 287965185)
@@ -74,7 +73,7 @@ def test_Assembler_exceptional_address_modes():
 		jump r5, @r4
 	"""
 	asm = Assembler('addr mode test file', test_string)
-	asm.assemble()
+	binary = asm.build_binary()
 	eq_(len(asm.code_seg), 4)
 
 	eq_(asm.code_seg[0], Insn(Opcodes.POP, Registers.SP,
@@ -86,7 +85,6 @@ def test_Assembler_exceptional_address_modes():
 	eq_(asm.code_seg[3], Insn(Opcodes.JUMP, 5,
 		0, 4, 0))
 
-	binary = asm.build_binary()
 	eq_(len(binary.code_seg), 4)
 
 	eq_(binary.code_seg[0], 884998144)
@@ -103,9 +101,8 @@ def test_Assembler_labels():
 		load r2, =1
 	"""
 	asm = Assembler('label test', test_string)
-	asm.assemble()
-
 	binary = asm.build_binary()
+
 	eq_(len(binary.code_seg), 4)
 
 	eq_(binary.code_seg[0], binary.code_seg[1])
@@ -123,8 +120,6 @@ def test_Assembler_data_seg():
 		add r3, r3
 	"""
 	asm = Assembler('data seg test', test_string)
-	asm.assemble()
-
 	binary = asm.build_binary()
 
 	eq_(len(binary.code_seg), 3)

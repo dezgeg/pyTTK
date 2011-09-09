@@ -39,3 +39,14 @@ def test_Insn_parts_ctor():
 	eq_(insn.imm_value, 42)
 
 	eq_(insn.to_binary(), 35782698)
+
+def test_Insn_negative_immediate():
+	insn = Insn(Opcodes.LOAD, 1, AddressModes.DIRECT, Registers.FP, -2)
+
+	eq_(insn.opcode, Opcodes.LOAD)
+	eq_(insn.rj, Registers.R1)
+	eq_(insn.address_mode, AddressModes.DIRECT)
+	eq_(insn.ri, Registers.FP)
+	eq_(insn.imm_value, -2)
+
+	eq_(insn.to_binary(), 36700158)
