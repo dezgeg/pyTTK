@@ -15,7 +15,11 @@ def run(args=None):
 	if res:
 		binary = Assembler(res.inputfile.name,
 				res.inputfile.read()).build_binary()
-		BinaryLoader.dump_binary(binary, res.outputfile)
+		if isinstance(binary, list):
+			for err in binary:
+				print err
+		else:
+			BinaryLoader.dump_binary(binary, res.outputfile)
 
 if __name__ == '__main__':
 	run()

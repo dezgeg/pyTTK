@@ -35,8 +35,8 @@ def test_Assembler_parsing():
 		('', Opcodes.NOP, '', '', '', ''),
 		('', Opcodes.PUSHR, 6, '', '', '')
 	]
-	for i in xrange(len(asm.insns)):
-		insn = asm.insns[i]
+	for i in xrange(len(asm.parses)):
+		insn = asm.parses[i]
 		# print (insn.label, insn.opcode, insn.rj, insn.address_mode, insn.imm_value, insn.ri)
 		eq_((insn.label, insn.opcode, insn.rj, insn.address_mode, insn.imm_value, insn.ri),
 				results[i])

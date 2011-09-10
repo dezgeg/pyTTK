@@ -35,18 +35,30 @@ data_decl = data_op('opcode') + number('imm_value')
 
 asm_line = Optional(symbol, default='').setParseAction(lambda s,l,t:
 	t[0])('label') + (instruction | data_decl)
-line = (asm_line + OneOrMore(LineEnd().suppress())).setParseAction(
-		lambda s,l,t: [t])
+
+def line_action(s,l,t):
+	t['loc'] = l
+	return [t]
+line = (asm_line + OneOrMore(LineEnd().suppress())).setParseAction(line_action)
 
 asm_file = (ZeroOrMore(LineEnd()).suppress() + ZeroOrMore(line)).ignore(';' + restOfLine)
 ### glue code ###
 class Assembler:
 	def __init__(self, filename, contents):
 		self.program = Program()
-		self.insns = asm_file.parseString(contents, True)
+		self.filename = filename
+		self.file_contents = contents
+		self.parses = asm_file.parseString(contents, True)
 		self.code_seg = []
 		self.data_seg = []
 		self.data_seg_syms = {}
+		self.current_parse = None
+		self.errors = []
+
+	def error(self, msg):
+		parse = self.current_parse
+		self.errors.append('%s:%d %s' %
+				(self.filename, lineno(self.current_parse.loc, self.file_contents), msg))
 
 	def assign_data_seg_symbol(self, sym):
 		self.data_seg_syms[sym] = len(self.data_seg)
@@ -67,12 +79,13 @@ class Assembler:
 		self.data_seg.append(insn)
 
 	def assemble(self):
-		insns = self.insns
+		parses = self.parses
 
-		for i in insns:
+		for i in parses:
+			self.current_parse = i
 			if i.opcode == 'equ':
 				if not i.label:
-					self.error(i, 'equ without a label')
+					self.error('equ without a label')
 				else:
 					self.assign_symbol(i.label, i.imm_value)
 			elif i.opcode == 'dc':
@@ -81,7 +94,7 @@ class Assembler:
 				self.append_data_seg(i.imm_value)
 			elif i.opcode == 'ds':
 				if i.imm_value < 0:
-					self.error(i, "operand to 'ds' must be positive")
+					self.error("operand to 'ds' must be positive")
 				else:
 					self.assign_data_seg_symbol(i.label)
 					self.data_seg += (0 for _ in xrange(i.imm_value))
@@ -166,7 +179,10 @@ class Assembler:
 		program.code_seg = Segment(0, cs_size - 1, code_seg_generator())
 		program.data_seg = Segment(cs_size, cs_size + len(self.data_seg) - 1,
 				self.data_seg)
-		return program
+		if self.errors:
+			return self.errors
+		else:
+			return program
 
 	def handle_instruction(self, parseresult):
 		if parseresult.label:
