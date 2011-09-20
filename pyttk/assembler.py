@@ -13,42 +13,74 @@ def opcode_generator():
 		yield keyword(opdata[1], opcode)
 
 ParserElement.setDefaultWhitespaceChars(" \t")
+ParserElement.enablePackrat()
+# error handling rule
+rest_of_line = Regex(r'[^\n]+')
+opt_whitespace = Optional(Regex(r'[ \t]+'))
+
+def error(msg, allow_empty=True):
+	def error_action(s,l,t):
+		t['error'] = msg
+		t['error_context'] = s.strip()
+		t['error_loc'] = l if t else l - 1
+		t['error_at_eol'] = len(t) == 0
+	if allow_empty:
+		return opt_whitespace + (rest_of_line | FollowedBy(LineEnd())).setParseAction(error_action)
+	else:
+		return opt_whitespace + (rest_of_line + FollowedBy(LineEnd())).setParseAction(error_action)
 
 number = Combine(Optional('-') + Word('0123456789')).setParseAction(
 		lambda s,l,t: int(t[0]))
 
-register = Or([keyword('r' + str(x), x) for x in range(0,7+1)] + 
+register = MatchFirst([keyword('r' + str(x), x) for x in range(0,7+1)] +
 	[keyword('sp', 6), keyword('fp',7)])
-opcode = Or(opcode_generator())
-data_op = Or([keyword(x) for x in ('ds', 'dc', 'equ')])
+opcode = MatchFirst(opcode_generator())
+data_op = MatchFirst([keyword(x) for x in ('ds', 'dc', 'equ')])
 
 symbol = ~(register | opcode | data_op) + Word(alphas + '_', alphanums + '_')
 address = symbol | number
-addrmode_specifier = Optional(Literal('=') | Literal('@'), default=' ')
-### actual rules ###
-second_operand =  addrmode_specifier('address_mode') + (register('ri') |
-		(address('imm_value') + Optional(
-			Suppress('(') + register('ri') + Suppress(')'))))
-operands = register('rj') + Optional(Suppress(',') + second_operand)
-instruction = opcode('opcode') + Optional(operands)
-data_decl = data_op('opcode') + number('imm_value')
+addrmode_specifier = Literal('=') | Literal('@')
+opt_addrmode_specifier = Optional(addrmode_specifier, default=' ')
 
+lparen = Suppress('(')
+rparen = Suppress(')') | error("`)'")
+### actual rules ###
+second_operand = (opt_addrmode_specifier('address_mode') + (register('ri')
+				  | (address('imm_value') +
+					 Optional(lparen +
+					   ((register('ri') + rparen)
+						| error('register')))))
+				  | (addrmode_specifier + error("`(', register or address"))
+				  | error("`@', `=', `(', register or address"))
+operands = register('rj') + ((',' + second_operand)
+							 | error("`,'", False)
+							 | Empty())
+operands |= error('register', False)
+
+instruction = opcode('opcode') + Optional(operands)
+data_decl = data_op('opcode') + (number('imm_value') | error('integer constant'))
+
+asm_directive = instruction | data_decl
 asm_line = Optional(symbol, default='').setParseAction(lambda s,l,t:
-	t[0])('label') + (instruction | data_decl)
+	t[0])('label') + asm_directive
+
+asm_line |= symbol + error('opcode or data directive')
+asm_line |= error('label, opcode or data directive')
+asm_line += Optional(error('end of line', False))
 
 def line_action(s,l,t):
 	t['loc'] = l
 	return [t]
-line = (asm_line + OneOrMore(LineEnd().suppress())).setParseAction(line_action)
+input_line = (asm_line + OneOrMore(LineEnd().suppress())).setParseAction(line_action)
 
-asm_file = (ZeroOrMore(LineEnd()).suppress() + ZeroOrMore(line)).ignore(';' + restOfLine)
+asm_file = (ZeroOrMore(LineEnd()).suppress() + ZeroOrMore(input_line)).ignore(';' + restOfLine)
 ### glue code ###
 class Assembler:
 	def __init__(self, filename, contents):
 		self.program = Program()
 		self.filename = filename
-		self.file_contents = contents
-		self.parses = asm_file.parseString(contents, True)
+		self.file_contents = contents.replace("\t", '        ')
+		self.parses = asm_file.parseString(self.file_contents, True)
 		self.code_seg = []
 		self.data_seg = []
 		self.data_seg_syms = {}
@@ -57,8 +89,19 @@ class Assembler:
 
 	def error(self, msg):
 		parse = self.current_parse
-		self.errors.append('%s:%d %s' %
-				(self.filename, lineno(self.current_parse.loc, self.file_contents), msg))
+		error_line = line(parse.loc, self.file_contents)
+		error_col = None
+		if parse.error_loc != '':
+			error_col = col(parse.error_loc, self.file_contents)
+			if parse.error_at_eol:
+				error_col = len(error_line.rstrip()) + 1
+			column_spec = "\n " + error_col * ' ' + '^'
+		else:
+			column_spec = ""
+		self.errors.append("%s:%d%s %s\n> %s%s" %
+					 (self.filename, lineno(parse.loc, self.file_contents),
+					  (':%s' % error_col) if error_col else '',
+					  msg, error_line, column_spec))
 
 	def assign_data_seg_symbol(self, sym):
 		self.data_seg_syms[sym] = len(self.data_seg)
@@ -83,7 +126,9 @@ class Assembler:
 
 		for i in parses:
 			self.current_parse = i
-			if i.opcode == 'equ':
+			if i.error:
+				self.error('expecting %s' % (i.error))
+			elif i.opcode == 'equ':
 				if not i.label:
 					self.error('equ without a label')
 				else:
