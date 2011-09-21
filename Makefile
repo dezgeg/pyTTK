@@ -1,4 +1,4 @@
-.PHONY: tests coverage clean default
+.PHONY: tests coverage clean default doc run-doc
 default: coverage
 
 tests:
@@ -11,3 +11,9 @@ coverage: clean
 clean:
 	coverage erase
 	rm -rf htmlcov
+
+doc:
+	make -C doc html
+
+run-doc: doc
+	sensible-browser doc/build/html/index.html &
