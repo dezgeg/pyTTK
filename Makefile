@@ -1,11 +1,11 @@
 .PHONY: tests coverage clean default doc run-doc
-default: coverage
+default: tests
 
 tests:
 	nosetests
 
 coverage: clean
-	nosetests --with-cov
+	nosetests --with-cov --with-xunit
 	coverage html
 
 clean:
